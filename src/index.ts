@@ -13,7 +13,7 @@ import { FlattenedProfile } from './types/index.js'
 
 // Set up the provider
 const ALCHEMY_SECRET = process.env.ALCHEMY_SECRET
-const provider = new providers.AlchemyProvider('goerli', ALCHEMY_SECRET)
+const provider = new providers.AlchemyProvider('optimism', ALCHEMY_SECRET)
 
 // Create ID Registry contract interface
 const idRegistry = new Contract(

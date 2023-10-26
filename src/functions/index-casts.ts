@@ -11,6 +11,7 @@ import { breakIntoChunks } from '../utils.js'
  */
 export async function indexAllCasts(limit?: number) {
   const startTime = Date.now()
+  console.log("Starting cast indexing")
   const allCasts = await getAllCasts(limit)
   const cleanedCasts = cleanCasts(allCasts)
 
@@ -48,16 +49,18 @@ export async function indexAllCasts(limit?: number) {
 
   // Break formattedCasts into chunks of 1000
   const chunks = breakIntoChunks(formattedCasts, 1000)
-
+  console.log("Chunks: " + chunks.length)
+  let chunkCount = chunks.length
   // Upsert each chunk into the Supabase table
   for (const chunk of chunks) {
     const { error } = await supabase.from('casts').upsert(chunk, {
       onConflict: 'hash',
     })
-
+    chunkCount--
     if (error) {
       throw error
     }
+    console.log("Chunk Left: " + chunkCount)
   }
 
   const endTime = Date.now()
@@ -77,13 +80,13 @@ export async function indexAllCasts(limit?: number) {
 async function getAllCasts(limit?: number): Promise<Cast[]> {
   const allCasts: Cast[] = new Array()
   let endpoint = buildCastEndpoint()
+  let loopCount = 0
 
   while (true) {
     const _response = await got(endpoint, MERKLE_REQUEST_OPTIONS).json()
-
     const response = _response as MerkleResponse
     const casts = response.result.casts
-
+    console.log("Loop count: " + loopCount + " Cast count: " + casts!.length)
     if (!casts) throw new Error('No casts found')
 
     for (const cast of casts) {
@@ -102,6 +105,7 @@ async function getAllCasts(limit?: number): Promise<Cast[]> {
     } else {
       break
     }
+    loopCount++
   }
 
   return allCasts

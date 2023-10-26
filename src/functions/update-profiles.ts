@@ -29,14 +29,17 @@ export async function updateAllProfiles() {
 
   // Upsert profiles in chunks to avoid locking the table
   const chunks = breakIntoChunks(formattedProfiles, 500)
+  console.log("Chunks: " + chunks.length)
+  let chunkCount = chunks.length
   for (const chunk of chunks) {
     const { error } = await supabase
       .from('profile')
       .upsert(chunk, { onConflict: 'id' })
-
+    chunkCount--
     if (error) {
       throw error
     }
+    console.log("Chunk Left: " + chunkCount)
   }
 
   const endTime = Date.now()
@@ -55,12 +58,12 @@ export async function updateAllProfiles() {
 async function getAllProfiles(): Promise<Profile[]> {
   const allProfiles: Profile[] = new Array()
   let endpoint = buildProfileEndpoint()
-
+  let loopCount = 0
   while (true) {
     const _response = await got(endpoint, MERKLE_REQUEST_OPTIONS).json()
-
     const response = _response as MerkleResponse
     const profiles = response.result.users
+    console.log("Loop count: " + loopCount + " Profile count: " + profiles!.length)
 
     if (!profiles) throw new Error('No profiles found')
 
@@ -75,11 +78,13 @@ async function getAllProfiles(): Promise<Profile[]> {
     } else {
       break
     }
+    loopCount++
   }
 
   // If there are missing ids (warpcast filtering), insert an empty profile
   const maxId = allProfiles[0].fid
   for (let i = 1; i <= maxId; i++) {
+    console.log("Completion percentage: " + (i / maxId) * 100 + "%")
     if (!allProfiles.find((p) => p.fid === i)) {
       allProfiles.push({
         fid: i,
@@ -95,7 +100,6 @@ async function getAllProfiles(): Promise<Profile[]> {
  * @param cursor
  */
 function buildProfileEndpoint(cursor?: string): string {
-  return `https://api.warpcast.com/v2/recent-users?filter=off&limit=1000${
-    cursor ? `&cursor=${cursor}` : ''
-  }`
+  return `https://api.warpcast.com/v2/recent-users?filter=off&limit=1000${cursor ? `&cursor=${cursor}` : ''
+    }`
 }
