@@ -46,7 +46,7 @@ export async function indexAllCasts(limit?: number) {
 
     return cast
   })
-
+  console.log("flattened chunks")
   // Break formattedCasts into chunks of 1000
   const chunks = breakIntoChunks(formattedCasts, 1000)
   console.log("Chunks: " + chunks.length)
@@ -66,10 +66,9 @@ export async function indexAllCasts(limit?: number) {
   const endTime = Date.now()
   const duration = (endTime - startTime) / 1000
 
-  if (duration > 60) {
-    // If it takes more than 60 seconds, log the duration so we can optimize
-    console.log(`Updated ${formattedCasts.length} casts in ${duration} seconds`)
-  }
+  // If it takes more than 60 seconds, log the duration so we can optimize
+  console.log(`Updated ${formattedCasts.length} casts in ${duration} seconds`)
+
 }
 
 /**
