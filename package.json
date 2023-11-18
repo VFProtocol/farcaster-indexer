@@ -7,6 +7,7 @@
     "build": "tsc",
     "clean": "rm -rf ./dist",
     "start": "tsc && node ./dist/index.js",
+    "single": "tsc && node ./dist/single.js",
     "dev": "tsc && node ./dist/index.js",
     "auth": "tsc && node ./dist/helpers/auth.js",
     "migrate": "tsc && node ./dist/helpers/migrate-profiles.js",

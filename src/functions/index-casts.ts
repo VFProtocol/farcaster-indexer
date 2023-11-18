@@ -26,6 +26,7 @@ export async function indexAllCasts(limit?: number) {
       author_pfp_url: c.author.pfp?.url || null,
       author_pfp_verified: c.author.pfp?.verified || false,
       text: c.text,
+      embeds: c.embeds || null,
       published_at: new Date(c.timestamp),
       mentions: c.mentions || null,
       replies_count: c.replies.count,

@@ -45,9 +45,16 @@ cron.schedule('* * * * *', async () => {
   try {
     await indexAllCasts(10_000)
   } catch (e) {
+    console.error("Error indexing casts")
     console.error(e)
   }
-  await updateAllProfiles()
+  
+  try {
+    await updateAllProfiles()
+  } catch (e) {
+    console.error("Error indexing profiles")
+    console.error(e)
+  }
 })
 
 // Run job every hour
