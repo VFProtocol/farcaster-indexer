@@ -41,7 +41,7 @@ idRegistry.on(eventToWatch, async (to, id) => {
 await upsertRegistrations(provider, idRegistry)
 
 // Run job every minute
-cron.schedule('* * * * *', async () => {
+cron.schedule('*/30 * * * *', async () => {
   try {
     await indexAllCasts(10_000)
   } catch (e) {
