@@ -35,14 +35,9 @@ export async function indexAllCasts(limit?: number) {
       watches_count: c.watches.count,
       parent_author_fid: c.parentAuthor?.fid || null,
       parent_author_username: c.parentAuthor?.username || null,
+      embeds: c.embeds || null,
+      tags: c.tags || null,
       deleted: false,
-    }
-
-    // Retain v1 hashes for backwards compatibility (remove after 3/21/2023)
-    if (c._hashV1) {
-      cast.hash_v1 = c._hashV1
-      cast.thread_hash_v1 = c._threadHashV1
-      cast.parent_hash_v1 = c._parentHashV1 || null
     }
 
     return cast

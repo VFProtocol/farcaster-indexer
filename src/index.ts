@@ -2,8 +2,11 @@ import 'dotenv/config'
 import { providers, Contract } from 'ethers'
 import cron from 'node-cron'
 
-import { idRegistryAddr, idRegistryAbi } from './contracts/id-registry.js'
-import { IdRegistry, IdRegistryEvents } from './contracts/types/id-registry.js'
+import {
+  idRegistryAddr,
+  idRegistryAbi,
+  IdRegistryEvents,
+} from './contracts/id-registry.js'
 import { indexAllCasts } from './functions/index-casts.js'
 import { indexVerifications } from './functions/index-verifications.js'
 import { upsertRegistrations } from './functions/read-logs.js'
@@ -16,11 +19,7 @@ const ALCHEMY_SECRET = process.env.ALCHEMY_SECRET
 const provider = new providers.AlchemyProvider('optimism', ALCHEMY_SECRET)
 
 // Create ID Registry contract interface
-const idRegistry = new Contract(
-  idRegistryAddr,
-  idRegistryAbi,
-  provider
-) as IdRegistry
+const idRegistry = new Contract(idRegistryAddr, idRegistryAbi, provider)
 
 // Listen for new events on the ID Registry
 const eventToWatch: IdRegistryEvents = 'Register'
@@ -40,7 +39,7 @@ idRegistry.on(eventToWatch, async (to, id) => {
 // Make sure we didn't miss any profiles when the indexer was offline
 await upsertRegistrations(provider, idRegistry)
 
-// Run job every minute
+// Run job every 2 minutes
 cron.schedule('*/30 * * * *', async () => {
   try {
     await indexAllCasts(10_000)
@@ -48,7 +47,10 @@ cron.schedule('*/30 * * * *', async () => {
     console.error("Error indexing casts")
     console.error(e)
   }
-  
+})
+
+// Run job every 10 minutes
+cron.schedule('*/60 * * * *', async () => {
   try {
     await updateAllProfiles()
   } catch (e) {
@@ -57,7 +59,7 @@ cron.schedule('*/30 * * * *', async () => {
   }
 })
 
-// Run job every hour
-cron.schedule('0 * * * *', async () => {
+// Run job every 5 hours
+cron.schedule('0 */5 * * *', async () => {
   await indexVerifications()
 })
