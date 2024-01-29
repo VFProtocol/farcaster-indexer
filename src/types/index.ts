@@ -93,7 +93,6 @@ export interface Cast {
   text: string
   timestamp: number
   mentions?: ProfileCore[]
-  embeds?: any 
   replies: {
     count: number
   }
@@ -146,7 +145,6 @@ export interface FlattenedCast {
   author_pfp_url: string | null
   author_pfp_verified: boolean | null
   text: string
-  embeds: any | null
   published_at: Date
   mentions: ProfileCore[] | null
   replies_count: number
