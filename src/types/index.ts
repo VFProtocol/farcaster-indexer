@@ -30,8 +30,14 @@ export interface Profile {
     bio: {
       text: string
       mentions: any[]
+      channelMentions?: any[] | null
+    },
+    location: {
+      placeId: string | null
+      description: string | null
     }
   }
+  activeOnFcNetwork?: boolean | null
   followerCount?: number
   followingCount?: number
   referrerUsername?: string
@@ -53,6 +59,7 @@ interface Embeds {
       description: string
       domain: string
       image: string
+      frame?: any
       useLargeImage: boolean
     }
   }[]
@@ -87,8 +94,9 @@ export interface Cast {
         mentions: Array<string>
       }
     }
-    followerCount?: number
-    followingCount?: number
+    followerCount: number
+    followingCount: number
+    activeOnFcNetwork: boolean
   }
   text: string
   timestamp: number
@@ -107,6 +115,7 @@ export interface Cast {
     count: number
   }
   parentAuthor?: Profile
+  quoteCount: number
   embeds: Embeds | undefined
   tags: Tag[] | undefined
 }
@@ -130,6 +139,8 @@ export interface FlattenedProfile {
   referrer?: string | null
   registered_at?: Date
   updated_at?: Date
+  active_on_fc?: boolean | null
+  link_in_bio_status?: number | null
 }
 
 export interface FlattenedCast {
@@ -151,11 +162,17 @@ export interface FlattenedCast {
   reactions_count: number
   recasts_count: number
   watches_count: number
+  quote_count: number
   parent_author_fid: number | null
   parent_author_username: string | null
   embeds: Embeds | null
   tags: Tag[] | null
   deleted: boolean
+  engagement: number
+  author_active: string | null
+  follower_count: number
+  engagement_band: number
+  engagement_int: number
 }
 
 export interface FlattenedVerification {

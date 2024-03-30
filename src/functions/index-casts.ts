@@ -9,13 +9,47 @@ import { breakIntoChunks } from '../utils.js'
  * Index the casts from all Farcaster profiles and insert them into Supabase
  * @param limit The max number of recent casts to index
  */
-export async function indexAllCasts(limit?: number) {
+export async function indexAllCasts(limit?: number, cursor?: string) : Promise<string | undefined> {
   const startTime = Date.now()
   console.log("Starting cast indexing")
-  const allCasts = await getAllCasts(limit)
-  const cleanedCasts = cleanCasts(allCasts)
+  const allCasts = await getAllCasts(limit, cursor)
+  const cleanedCasts = cleanCasts(allCasts.casts)
 
   const formattedCasts: FlattenedCast[] = cleanedCasts.map((c) => {
+    var active = null
+    if (c.author.activeOnFcNetwork && (c.parentAuthor == undefined || c.parentAuthor?.fid == undefined)) {
+      active = "active"
+    }
+
+    // Filter out frames
+    if (c.embeds?.urls) {
+      if (c.embeds?.urls.length > 0) {
+        if (c.embeds?.urls[0].openGraph) {
+          if (c.embeds?.urls[0].openGraph.frame != undefined) {
+            active = null
+          }
+        }
+      }
+    }
+
+    if (c.author.followerCount == undefined) {
+      active = null
+    }
+    const engagementScore = (c.replies.count * 4 + (c.quoteCount + c.recasts.count) * 2 + c.reactions.count) - ((c.author.followerCount / 60000) * 3) - ((c.author.followerCount / 20000) * 2) - (c.author.followerCount / 9000)
+    const engagmenntScoreInt = Math.round(engagementScore * 10)
+    var band = 0
+
+    if (engagementScore < 0) {
+      band = -1
+    } else {
+      while (true) {
+        if (engagementScore < 5 ** band) {
+          break
+        }
+        band++
+      }
+    }
+
     const cast: FlattenedCast = {
       hash: c.hash,
       thread_hash: c.threadHash,
@@ -32,11 +66,17 @@ export async function indexAllCasts(limit?: number) {
       reactions_count: c.reactions.count,
       recasts_count: c.recasts.count,
       watches_count: c.watches.count,
+      quote_count: c.quoteCount,
       parent_author_fid: c.parentAuthor?.fid || null,
       parent_author_username: c.parentAuthor?.username || null,
       embeds: c.embeds || null,
       tags: c.tags || null,
       deleted: false,
+      engagement: engagementScore,
+      author_active: active,
+      follower_count: c.author.followerCount,
+      engagement_band: band,
+      engagement_int: engagmenntScoreInt
     }
 
     return cast
@@ -48,14 +88,21 @@ export async function indexAllCasts(limit?: number) {
   let chunkCount = chunks.length
   // Upsert each chunk into the Supabase table
   for (const chunk of chunks) {
-    const { error } = await supabase.from('casts').upsert(chunk, {
-      onConflict: 'hash',
-    })
-    chunkCount--
-    if (error) {
-      throw error
+    try {
+      const { error } = await supabase.from('casts').upsert(chunk, {
+        onConflict: 'hash',
+      })
+      chunkCount--
+      if (error) {
+        throw error
+      }
+      console.log("Chunk Left: " + chunkCount)
+    } catch (error: any) {
+      console.error("Error inserting chunk", error)
+      if (error.code != '23503') {
+        throw error
+      }
     }
-    console.log("Chunk Left: " + chunkCount)
   }
 
   const endTime = Date.now()
@@ -63,18 +110,25 @@ export async function indexAllCasts(limit?: number) {
 
   // If it takes more than 60 seconds, log the duration so we can optimize
   console.log(`Updated ${formattedCasts.length} casts in ${duration} seconds`)
-
+  console.log("Finished cast indexing, next cursor: " + allCasts.nextCursor)
+  return allCasts.nextCursor
 }
+
+type CastResult = {
+  casts: Cast[];
+  nextCursor?: string;
+};
 
 /**
  * Get the latest casts from the Merkle API. 100k casts every ~35 seconds on local machine.
  * @param limit The maximum number of casts to return. If not provided, all casts will be returned.
  * @returns An array of all casts on Farcaster
  */
-async function getAllCasts(limit?: number): Promise<Cast[]> {
+async function getAllCasts(limit?: number, startCursor?:string): Promise<CastResult> {
   const allCasts: Cast[] = new Array()
-  let endpoint = buildCastEndpoint()
+  let endpoint = buildCastEndpoint(startCursor)
   let loopCount = 0
+  let lastCursor: string | undefined = ""
 
   while (true) {
     const _response = await got(endpoint, MERKLE_REQUEST_OPTIONS).json()
@@ -86,14 +140,15 @@ async function getAllCasts(limit?: number): Promise<Cast[]> {
     for (const cast of casts) {
       allCasts.push(cast)
     }
+    const cursor = response.next?.cursor
+    lastCursor = response.next?.cursor
 
     // If limit is provided, stop when we reach it
     if (limit && allCasts.length >= limit) {
       break
     }
-
     // If there are more casts, get the next page
-    const cursor = response.next?.cursor
+
     if (cursor) {
       endpoint = buildCastEndpoint(cursor)
     } else {
@@ -102,7 +157,7 @@ async function getAllCasts(limit?: number): Promise<Cast[]> {
     loopCount++
   }
 
-  return allCasts
+  return { casts: allCasts, nextCursor: lastCursor}
 }
 
 /**
@@ -110,9 +165,8 @@ async function getAllCasts(limit?: number): Promise<Cast[]> {
  * @param cursor
  */
 function buildCastEndpoint(cursor?: string): string {
-  return `https://api.warpcast.com/v2/recent-casts?limit=1000${
-    cursor ? `&cursor=${cursor}` : ''
-  }`
+  return `https://api.warpcast.com/v2/recent-casts?limit=1000${cursor ? `&cursor=${cursor}` : ''
+    }`
 }
 
 function cleanCasts(casts: Cast[]): Cast[] {

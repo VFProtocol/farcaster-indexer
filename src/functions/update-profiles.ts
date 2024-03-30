@@ -5,6 +5,30 @@ import supabase from '../supabase.js'
 import { FlattenedProfile, MerkleResponse, Profile } from '../types/index.js'
 import { breakIntoChunks } from '../utils.js'
 
+function getRank(text: string): number | null {
+  if (text == null || text == "") {
+    return null
+  }
+
+  if (text.includes("seemore.tv")) {
+    return 1;
+  } else if (["linktr.ee", "bio.link", "bio.site","msha.ke","beacons.ai","bento.me","nf.td","lnk.to","likeshop.me","github.io","komi.io","lnk.bio","linkin.bio","stan.store","withkoji.com","feedlink.io","taplink.cc"].some(domain => text.includes(domain))) {
+    return 2;
+  } else if ((/^https:\/\//).test(text)) {
+    return 3;
+  } else if ((/^http:\/\//).test(text)) {
+    return 4;
+  } else if ((/www\./).test(text)) {
+    return 5;
+  } else if ((/\b[a-z0-9.-]+\.[a-z]{2,}\/\S+/).test(text)) {
+    return 6;
+  } else if ((/\b[a-z0-9.-]+\.[a-z]{2,}\b/).test(text)) {
+    return 7;
+  }
+
+  return null; 
+}
+
 /**
  * Reformat and upsert all profiles into the database
  */
@@ -24,6 +48,8 @@ export async function updateAllProfiles(limit?: number) {
       bio: p.profile?.bio?.text || null,
       referrer: p?.referrerUsername || null,
       updated_at: new Date(),
+      active_on_fc: p.activeOnFcNetwork || null,
+      link_in_bio_status: getRank(p.profile?.bio?.text || "")
     }
   })
 
@@ -37,7 +63,8 @@ export async function updateAllProfiles(limit?: number) {
       .upsert(chunk, { onConflict: 'id' })
     chunkCount--
     if (error) {
-      throw error
+      console.log(chunk)
+      // throw error
     }
     console.log("Chunk Left: " + chunkCount)
   }
