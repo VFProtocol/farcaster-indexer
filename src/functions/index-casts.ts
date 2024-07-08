@@ -131,18 +131,22 @@ async function getAllCasts(limit?: number, startCursor?:string): Promise<CastRes
   let lastCursor: string | undefined = ""
 
   while (true) {
-    const _response = await got(endpoint, MERKLE_REQUEST_OPTIONS).json()
-    const response = _response as MerkleResponse
-    const casts = response.result.casts
-    console.log("Loop count: " + loopCount + " Cast count: " + casts!.length)
-    if (!casts) throw new Error('No casts found')
-
-    for (const cast of casts) {
-      allCasts.push(cast)
+    var cursor = undefined
+    try {
+      const _response = await got(endpoint, MERKLE_REQUEST_OPTIONS).json()
+      const response = _response as MerkleResponse
+      const casts = response.result.casts
+      console.log("Loop count: " + loopCount + " Cast count: " + casts!.length)
+      if (casts) {
+        for (const cast of casts) {
+          allCasts.push(cast)
+        }
+      }
+      cursor = response.next?.cursor
+      lastCursor = response.next?.cursor
+    } catch (e:any) {
+      console.log("found error")
     }
-    const cursor = response.next?.cursor
-    lastCursor = response.next?.cursor
-
     // If limit is provided, stop when we reach it
     if (limit && allCasts.length >= limit) {
       break
